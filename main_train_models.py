@@ -47,7 +47,7 @@ parser.add_argument('--depth',type=int,default=32,help='WRN depth')
 parser.add_argument('--width_factor',type=int,default=10,help='WRN width factor')
 parser.add_argument('--drop_rate',type=float,default=0.0, help='WRN drop rate')
 parser.add_argument('--training_method', default='standard', type=str, help='standard, pgd, GAIRAT',
-                    choices=['standard, pgd, GAIRAT'])
+                    choices=['standard', 'pgd', 'GAIRAT'])
 parser.add_argument('--number_of_workers', default=0, type=int, help='number_of_workers')
 
 args = parser.parse_args()
