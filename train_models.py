@@ -136,7 +136,7 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
         images_flipped = random_flip_left_right(images)
         outputs = model(images_flipped)
         _, predicted_label = outputs.max(1)
-        random_number = truncated_normal(1, threshold=8.).abs()
+        random_number = truncated_normal(1, 8.).abs()
         NUM_STEPS = int(min(random_number + 4, 1.25 * random_number))
         
         images_adv, _ = pgd(model, images_flipped, predicted_label, eps_defense, NUM_STEPS,
