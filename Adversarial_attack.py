@@ -7,7 +7,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Project gradient descent attack
 # It returns the number of steps to alter the data prediction
-def pgd(model, data, target, epsilon, num_steps, step_size, rand_init=True, device=None):
+def pgd(model, data, target, epsilon, num_steps, step_size, rand_init=True, kappa=False, device=None):
     Kappa = torch.zeros(len(data))
     if rand_init == True:
         x_adv = data.detach() + 0.001 * torch.from_numpy(np.random.uniform(-epsilon, epsilon, data.shape)).float().to(device)
@@ -19,9 +19,10 @@ def pgd(model, data, target, epsilon, num_steps, step_size, rand_init=True, devi
         output = model(x_adv)
         predict = output.max(dim=1, keepdim=True)[1]
         # Update kappa
-        for p in range(len(x_adv)):
-            if predict[p] == target[p]:
-                Kappa[p] += 1
+        if kappa == True:
+            for p in range(len(x_adv)):
+                if predict[p] == target[p]:
+                    Kappa[p] += 1
         model.zero_grad()
         with torch.enable_grad():
             loss = nn.CrossEntropyLoss()(output, target)

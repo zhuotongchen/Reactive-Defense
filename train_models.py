@@ -124,7 +124,7 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
     optimizer.param_groups[0].update(lr=lr)
     # Set adversarial training parameters
     EPSILON = args.epsilon
-    STEP_SIZE = args.step_size
+    STEP_SIZE = 1. / 255.
     # NUM_STEPS = args.num_steps
     
     for i, (images, labels) in enumerate(train_loader):
@@ -141,12 +141,15 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
         
         images_adv, _ = pgd(model, images_flipped, predicted_label, eps_defense, NUM_STEPS,
                            STEP_SIZE, rand_init=False, device=device)
-        images_combined = torch.cat((images_flipped[0:num_half_images], images_adv[num_half_images:]), dim=0)
+        # images_combined = torch.cat((images_flipped[0:num_half_images], images_adv[num_half_images:]), dim=0)
         
-        outputs_worse = model(images_combined)
-        loss_1 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[0:num_half_images], labels[0:num_half_images]) * 2.0 / 1.3
-        loss_2 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[num_half_images:], labels[num_half_images:]) * 0.6 / 1.3
-        loss = (loss_1 + loss_2) / 2.
+        # outputs_worse = model(images_combined)
+        # loss_1 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[0:num_half_images], labels[0:num_half_images]) * 2.0 / 1.3
+        # loss_2 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[num_half_images:], labels[num_half_images:]) * 0.6 / 1.3
+        # loss = (loss_1 + loss_2) / 2.
+        outputs_worse = model(images_adv)
+        loss = nn.CrossEntropyLoss(reduction="mean")(outputs_worse, labels)
+        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -242,7 +245,7 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
         optimizer.param_groups[0].update(lr=lr)
         
         x_adv, Kappa = pgd(model, data, target, EPSILON, NUM_STEPS,
-                           STEP_SIZE, rand_init=True, device=None)
+                           STEP_SIZE, rand_init=True, kappa=True, device=None)
         logit = model(x_adv)
         _, predicted_label = outputs.max(1)
         if (epoch + 1) >= BEGIN_EPOCH:

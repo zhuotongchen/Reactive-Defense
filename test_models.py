@@ -22,7 +22,7 @@ def testing(test_loader, model, step_size, eps, attack='None', device=None):
             x = Random(inputs, labels, eps, model)
         elif attack == 'pgd':
             x, _ = pgd(model, inputs, labels, epsilon=eps,
-                          num_steps=20, step_size=step_size, rand_init=True, device=device)
+                          num_steps=20, step_size=step_size, rand_init=False, device=device)
         elif attack == 'cw':
             print('Processing CW attack on batch:', i)
             CW = CW_attack(model)
