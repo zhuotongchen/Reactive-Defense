@@ -5,89 +5,77 @@ import numpy as np
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-MEAN = torch.tensor([0.485, 0.456, 0.406])
-SIGMA = torch.tensor([0.229, 0.224, 0.225])
-upper, lower = (1. - MEAN) / SIGMA, (0. - MEAN) / SIGMA
-lower = lower[None, :, None, None]
-upper = upper[None, :, None, None]
-
-# Project gradient descent attack without maximum epsilon constraint
-def pgd_unconstrained(model, x, y, loss_fn, num_steps, step_size):
-    step_size = (step_size / 255.) / SIGMA
-    step_size = step_size[None, :, None, None]
-    x_adv = x.clone().detach().requires_grad_(True).to(x.device)
-    for i in range(num_steps):
-        _x_adv = x_adv.clone().detach().requires_grad_(True)
-        prediction = model(_x_adv)
-        loss = loss_fn(prediction, y)
+# Project gradient descent attack
+# It returns the number of steps to alter the data prediction
+def pgd(model, data, target, epsilon, num_steps, step_size, rand_init=True, device=None):
+    Kappa = torch.zeros(len(data))
+    if rand_init == True:
+        x_adv = data.detach() + 0.001 * torch.from_numpy(np.random.uniform(-epsilon, epsilon, data.shape)).float().to(device)
+    else:
+        x_adv = data.detach()
+    x_adv = torch.clamp(x_adv, 0., 1.)
+    for ii in range(num_steps):
+        x_adv.requires_grad_()
+        output = model(x_adv)
+        predict = output.max(dim=1, keepdim=True)[1]
+        # Update kappa
+        for p in range(len(x_adv)):
+            if predict[p] == target[p]:
+                Kappa[p] += 1
+        model.zero_grad()
+        with torch.enable_grad():
+            loss = nn.CrossEntropyLoss()(output, target)
         loss.backward()
-
-        with torch.no_grad():
-            adv_gradient = _x_adv.grad.sign()
-            adv_gradient *= step_size
-            x_adv += adv_gradient
-            x_adv = torch.max(torch.min(x_adv, upper), lower)
-    return x_adv.detach()
-
+        eta = step_size * x_adv.grad.sign()
+        # Update adversarial data
+        x_adv = x_adv.detach() + eta
+        x_adv = torch.min(torch.max(x_adv, data - epsilon), data + epsilon)
+        x_adv = torch.clamp(x_adv, 0., 1.)
+    x_adv.requires_grad_(False)
+    return x_adv.detach(), Kappa
+        
 # The fast gradient sign method
-def fgsm(x, labels, eps, loss_function, model):
-    eps = (eps / 255.) / SIGMA
-    eps = eps[None, :, None, None]
-    
-    x_ = x.clone().detach().requires_grad_(True).to(x.device)
+def fgsm(data, labels, epsilon, model):
+    x_ = data.clone().detach().requires_grad_(True).to(data.device)
     outputs = model(x_)
-    loss = loss_function(outputs, labels)
+    loss = nn.CrossEntropyLoss()(outputs, labels)
     loss.backward()
     with torch.no_grad():
-        adv_gradient = torch.sign(x_.grad)
-        adv_gradient *= eps
+        adv_gradient = epsilon * torch.sign(x_.grad)
         x_adv = x_ + adv_gradient
-        x_adv = torch.max(torch.min(x_adv, upper), lower)
+        x_adv = torch.min(torch.max(x_adv, data - epsilon), data + epsilon)
+        x_adv = torch.clamp(x_adv, 0., 1.)
     return x_adv.detach()
 
 # Uniform random perturbation
-def Random(x, labels, eps, loss_function, model):
-    eps = (eps / 255.) / SIGMA
+def Random(data, labels, epsilon, model, device=None):
     with torch.no_grad():
-        adv_gradient = torch.sign(torch.normal(torch.zeros_like(x), torch.ones_like(x)))
-        adv_gradient *= eps[None, :, None, None]
-        x_adv = x + adv_gradient
-        x_adv = torch.max(torch.min(x_adv, upper), lower)
+        noise = torch.from_numpy(np.random.uniform(-epsilon, epsilon, data.shape)).float().to(device)
+        x_adv = data + noise
+        x_adv = torch.clamp(x_adv, 0., 1.)
     return x_adv.detach()
 
 # The project gradient descent attack
-def pgd(model, x, y, loss_fn, num_steps, step_size, eps):
-    step_size = (step_size / 255.) / SIGMA
-    step_size = step_size[None, :, None, None]
-    eps = (eps / 255.) / SIGMA
-    eps = eps[None, :, None, None]
-    x_adv = x.clone().to(x.device)
-    for i in range(num_steps):
-        _x_adv = x_adv.clone().detach().requires_grad_(True)
-        prediction = model(_x_adv)
-        loss = loss_fn(prediction, y)
-        loss.backward()
+# def pgd(model, x, y, loss_fn, num_steps, step_size, eps):
+#     step_size = (step_size / 255.) / SIGMA
+#     step_size = step_size[None, :, None, None]
+#     eps = (eps / 255.) / SIGMA
+#     eps = eps[None, :, None, None]
+#     x_adv = x.clone().to(x.device)
+#     for i in range(num_steps):
+#         _x_adv = x_adv.clone().detach().requires_grad_(True)
+#         prediction = model(_x_adv)
+#         loss = loss_fn(prediction, y)
+#         loss.backward()
 
-        with torch.no_grad():
-            adv_gradient = _x_adv.grad.sign()
-            adv_gradient *= step_size
-            x_adv += adv_gradient
-            x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
-            x_adv = torch.max(torch.min(x_adv, upper), lower)
-    return x_adv.detach()
+#         with torch.no_grad():
+#             adv_gradient = _x_adv.grad.sign()
+#             adv_gradient *= step_size
+#             x_adv += adv_gradient
+#             x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
+#             x_adv = torch.max(torch.min(x_adv, upper), lower)
+#     return x_adv.detach()
 
-def img_transform(x):
-    # Transform images from [0., 1.] range into scaled range
-    x -= MEAN[None, :, None, None]
-    x /= SIGMA[None, :, None, None]
-    return x
-
-def img_de_transform(x):
-    # Transform images from scaled range into [0., 1.] range
-    x *= SIGMA[None, :, None, None]
-    x += MEAN[None, :, None, None]
-    return x
-    
 DECREASE_FACTOR = 0.9  # 0<f<1, rate at which we shrink tau; larger is more accurate
 MAX_ITERATIONS = 100  # number of iterations to perform gradient descent
 ABORT_EARLY = True  # abort gradient descent upon first valid solution
@@ -116,20 +104,18 @@ class CW_attack:
         self.const_factor = const_factor
         self.num_classes = 10
     
-    def attack(self, data, labels, eps):
+    def attack(self, data, labels, epsilon):
         r = []
-        eps = (eps / 255.) / SIGMA
-        eps = eps[None, :, None, None]
         for count, (x, target) in enumerate(zip(data, labels)):
             # Image in scaled range
             x = x.view(1, 3, 32, 32)
             img_ = x.clone()
             # Transform image into range of [-0.5, 0.5]
-            img_ = img_de_transform(img_) - 0.5
+            img_ -= 0.5
             x_adv = self.attack_single(img_, target)
-            x_adv = img_transform((x_adv + 0.5))
-            x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
-            x_adv = torch.max(torch.min(x_adv, upper), lower)        
+            x_adv += 0.5
+            x_adv = torch.max(torch.min(x_adv, x + epsilon), x - epsilon)
+            x_adv = torch.clamp(x_adv, 0., 1.)
             
             r.extend(x_adv)
         return torch.stack(r)             
@@ -168,7 +154,7 @@ class CW_attack:
         # timg in range of [-0.5, 0.5]
         modifier = torch.zeros_like(timg, dtype=torch.float32, requires_grad=True)
         optimizer = torch.optim.Adam([modifier], self.LEARNING_RATE)
-        orig_output = self.model(img_transform(timg + 0.5)).squeeze() 
+        orig_output = self.model(timg + 0.5).squeeze() 
         # convert to tanh-space
         simg = atanh(starts * 1.999999)
         target_onehot = torch.nn.functional.one_hot(labels, num_classes=self.num_classes).type(torch.float32)
@@ -177,7 +163,7 @@ class CW_attack:
                 # newimg in range of [-0.5, 0.5], perturbation is in inverse tanh space
                 newimg = torch.tanh(modifier + simg) / 2                
                 # Transform image into scaled range as model input
-                output = self.model(img_transform((newimg + 0.5))).squeeze()
+                output = self.model(newimg + 0.5).squeeze()
                 
                 real = (target_onehot * output).sum()
                 other = ((1 - target_onehot) * output - (target_onehot * 10000)).max()
@@ -230,20 +216,18 @@ class Manifold_attack:
         _, self.sub_dim = self.BASIS.shape
         self.num_classes = 10
     
-    def attack(self, data, labels, eps):
+    def attack(self, data, labels, epsilon):
         r = []
-        eps = (eps / 255.) / SIGMA
-        eps = eps[None, :, None, None]
         for count, (x, target) in enumerate(zip(data, labels)):
             # Image in scaled range
             x = x.view(1, 3, 32, 32)
             img_ = x.clone()
             # Transform image into range of [-0.5, 0.5]
-            img_ = img_de_transform(img_) - 0.5
+            img_ -= 0.5
             x_adv = self.attack_single(img_, target)
-            x_adv = img_transform((x_adv + 0.5))
-            x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
-            x_adv = torch.max(torch.min(x_adv, upper), lower)        
+            x_adv += 0.5
+            x_adv = torch.max(torch.min(x_adv, x + epsilon), x - epsilon)
+            x_adv = torch.clamp(x_adv, 0., 1.)       
             
             r.extend(x_adv)
         return torch.stack(r)             
@@ -282,7 +266,7 @@ class Manifold_attack:
         # timg in range of [-0.5, 0.5]
         modifier = torch.zeros([self.sub_dim, 1], dtype=torch.float32, requires_grad=True)
         optimizer = torch.optim.Adam([modifier], self.LEARNING_RATE)
-        orig_output = self.model(img_transform(timg + 0.5)).squeeze() 
+        orig_output = self.model(timg + 0.5).squeeze() 
         simg = starts
         target_onehot = torch.nn.functional.one_hot(labels, num_classes=self.num_classes).type(torch.float32)
         while const < self.LARGEST_CONST:
@@ -292,7 +276,7 @@ class Manifold_attack:
                 noise = noise.reshape(timg.shape)
                 newimg = simg + noise               
                 # Transform image into scaled range as model input
-                output = self.model(img_transform((newimg + 0.5))).squeeze()
+                output = self.model(newimg + 0.5).squeeze()
                 
                 real = (target_onehot * output).sum()
                 other = ((1 - target_onehot) * output - (target_onehot * 10000)).max()

@@ -32,26 +32,20 @@ parser.add_argument('--start_epoch', default=0, type=int, help='start epoch')
 parser.add_argument('--batch_size', default=128, type=int, help='batch_size')
 parser.add_argument('--learning_rate', default=0.1, type=float, help='learning_rate')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
-parser.add_argument('--training_method', default='standard', type=str, help='standard, label_smooth, fgsm, random, pgd',
-                    choices=['standard, label_smooth, fgsm, random, pgd'])
+parser.add_argument('--epsilon', default=0.031, type=float, help='adversarial training epsilon')
+parser.add_argument('--step_size', default=0.007, type=float, help='adversarial training step_size')
+parser.add_argument('--num_steps', default=10, type=int, help='adversarial training num_steps')
+parser.add_argument('--begin_epoch', default=60, type=int, help='begin epoch for GAIRAT')
+
+
+parser.add_argument('--training_method', default='standard', type=str, help='standard, pgd, GAIRAT',
+                    choices=['standard, pgd, GAIRAT'])
 parser.add_argument('--number_of_workers', default=0, type=int, help='number_of_workers')
 
 args = parser.parse_args()
 workers = args.number_of_workers
-epochs = args.epochs
-start_epoch = args.start_epoch
 batch_size = args.batch_size
-learning_rate = args.learning_rate
-momentum = args.momentum
-weight_decay = args.weight_decay
-training_method = args.training_method
-if training_method == 'standard':
-    lr_schedule = [150, 250]
-else:
-    lr_schedule = [500, 750]
 
-
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 if args.data_set == 'cifar10':
     num_classes = 10
     train_loader = torch.utils.data.DataLoader(
@@ -90,8 +84,7 @@ print('==> Building model..')
 net = resnet20(num_classes=num_classes)
 net = net.to(device)
 
-training(train_loader, test_loader, net, epochs, start_epoch, learning_rate, lr_schedule, momentum, weight_decay,
-         num_classes, training_method, device)
+training(train_loader, test_loader, net, args, device)
 
 
 

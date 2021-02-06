@@ -8,7 +8,6 @@ from Adversarial_attack import fgsm, Random, pgd, CW_attack, Manifold_attack
 
 def testing(test_loader, model, step_size, eps, attack='None', device=None):    
     model.eval()
-    criterion = nn.CrossEntropyLoss()
     total_step = len(test_loader)
     test_loss = 0
     correct = 0
@@ -16,18 +15,19 @@ def testing(test_loader, model, step_size, eps, attack='None', device=None):
     for i, (inputs, labels) in enumerate(test_loader):
         inputs, labels = inputs.to(device), labels.to(device)
         if attack == 'None':
-            images_ = inputs
+            x = inputs
         elif attack == 'fgsm':
-            images_ = fgsm(inputs, labels, eps, criterion, model)
-        elif attack == 'random':
-            images_ = Random(inputs, labels, eps, criterion, model)
+            x = fgsm(inputs, labels, eps, model)
+        elif attack == 'Random':
+            x = Random(inputs, labels, eps, model)
         elif attack == 'pgd':
-            images_ = pgd(model, inputs, labels, criterion, num_steps=20, step_size=step_size, eps=eps)
+            x, _ = pgd(model, inputs, labels, epsilon=eps,
+                          num_steps=20, step_size=step_size, rand_init=True, device=device)
         elif attack == 'cw':
             print('Processing CW attack on batch:', i)
             CW = CW_attack(model)
-            images_ = CW.attack(inputs, labels, eps)
-        outputs = model(images_)
+            x = CW.attack(inputs, labels, eps)
+        outputs = model(x)
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
@@ -37,7 +37,6 @@ def testing(test_loader, model, step_size, eps, attack='None', device=None):
 
 def manifold_attack(test_loader, model, eps, basis, device):
     model.eval()
-    criterion = nn.CrossEntropyLoss().cuda()
     total_step = len(test_loader)
     test_loss = 0
     correct = 0
@@ -46,8 +45,8 @@ def manifold_attack(test_loader, model, eps, basis, device):
         inputs, labels = inputs.to(device), labels.to(device)
         print('Processing CW attack on batch:', i)
         Man_attack = Manifold_attack(model, basis)
-        images_ = Man_attack.attack(inputs, labels, eps)
-        outputs = model(images_)
+        x = Man_attack.attack(inputs, labels, eps)
+        outputs = model(x)
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
