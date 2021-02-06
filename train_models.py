@@ -71,16 +71,15 @@ def training(train_loader, test_loader, model, args, device=None):
             save_checkpoint(model.state_dict(), filename='Model_{}.ckpt'.format(TRAIN_METHOD))
         
         if TRAIN_METHOD == 'pgd' or TRAIN_METHOD == 'GAIRAT':
-            if (epoch+1) % TEST_FREQUENCY == 0:
-                # Set adversarial training parameters
-                EPSILON = args.epsilon
-                STEP_SIZE = args.step_size         
-                accu_adversarial = testing(test_loader, model, STEP_SIZE, eps=EPSILON, attack='pgd', device=device)
-                print ('Acc: {:.3f}'.format(accu_adversarial))
-                best_accu_robust = max(accu_adversarial, best_accu_robust)
-                if best_accu_robust > best_prec_robust_history:
-                    best_prec_robust_history = best_accu_robust
-                    save_checkpoint(model.state_dict(), filename='Model_robust_{}.ckpt'.format(TRAIN_METHOD))
+            # Set adversarial training parameters
+            EPSILON = args.epsilon
+            STEP_SIZE = args.step_size         
+            accu_adversarial = testing(test_loader, model, STEP_SIZE, eps=EPSILON, attack='pgd', device=device)
+            print ('Acc adversarial: {:.3f}'.format(accu_adversarial))
+            best_accu_robust = max(accu_adversarial, best_accu_robust)
+            if best_accu_robust > best_prec_robust_history:
+                best_prec_robust_history = best_accu_robust
+                save_checkpoint(model.state_dict(), filename='Model_robust_{}.ckpt'.format(TRAIN_METHOD))
 
 def train_standard(train_loader, model, optimizer, max_lr, epoch, num_epochs, device):
     train_loss = 0
