@@ -55,27 +55,6 @@ def Random(data, labels, epsilon, model, device=None):
         x_adv = torch.clamp(x_adv, 0., 1.)
     return x_adv.detach()
 
-# The project gradient descent attack
-# def pgd(model, x, y, loss_fn, num_steps, step_size, eps):
-#     step_size = (step_size / 255.) / SIGMA
-#     step_size = step_size[None, :, None, None]
-#     eps = (eps / 255.) / SIGMA
-#     eps = eps[None, :, None, None]
-#     x_adv = x.clone().to(x.device)
-#     for i in range(num_steps):
-#         _x_adv = x_adv.clone().detach().requires_grad_(True)
-#         prediction = model(_x_adv)
-#         loss = loss_fn(prediction, y)
-#         loss.backward()
-
-#         with torch.no_grad():
-#             adv_gradient = _x_adv.grad.sign()
-#             adv_gradient *= step_size
-#             x_adv += adv_gradient
-#             x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
-#             x_adv = torch.max(torch.min(x_adv, upper), lower)
-#     return x_adv.detach()
-
 DECREASE_FACTOR = 0.9  # 0<f<1, rate at which we shrink tau; larger is more accurate
 MAX_ITERATIONS = 100  # number of iterations to perform gradient descent
 ABORT_EARLY = True  # abort gradient descent upon first valid solution
