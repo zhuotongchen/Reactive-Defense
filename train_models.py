@@ -131,6 +131,7 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
     for i, (images, labels) in enumerate(train_loader):
         eps_defense = truncated_normal(images.shape[0], EPSILON).abs()
         eps_defense = eps_defense[:, None, None, None]
+        eps_defense = eps_defense.to(device)
         num_half_images = int(images.shape[0] / 2)
         images, labels = images.to(device), labels.to(device)
         images_flipped = random_flip_left_right(images)
