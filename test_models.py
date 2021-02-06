@@ -32,7 +32,7 @@ def testing(test_loader, model, step_size, eps, attack='None', device=None):
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
     accuracy = 100.*correct/total
-    print('Testing accuracy:', accuracy)
+    # print('Testing accuracy:', accuracy)
     return accuracy
 
 def manifold_attack(test_loader, model, eps, basis, device):

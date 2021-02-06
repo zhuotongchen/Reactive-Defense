@@ -48,7 +48,7 @@ parser.add_argument('--width_factor',type=int,default=10,help='WRN width factor'
 parser.add_argument('--drop_rate',type=float,default=0.0, help='WRN drop rate')
 parser.add_argument('--training_method', default='standard', type=str, help='standard, pgd, GAIRAT',
                     choices=['standard', 'pgd', 'GAIRAT'])
-parser.add_argument('--number_of_workers', default=0, type=int, help='number_of_workers')
+parser.add_argument('--number_of_workers', default=2, type=int, help='number_of_workers')
 
 args = parser.parse_args()
 model_type = args.model_type
@@ -96,6 +96,8 @@ if model_type == 'resnet20':
     net = resnet20(num_classes=num_classes).to(device)
 elif model_type == 'WRN':
     net = Wide_ResNet_Madry(depth=depth, num_classes=num_classes, widen_factor=width_factor, dropRate=drop_rate).to(device)
+
+net = torch.nn.DataParallel(net)
 
 training(train_loader, test_loader, net, args, device=device)
 
