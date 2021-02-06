@@ -66,7 +66,7 @@ def training(train_loader, test_loader, model, args, device=None):
         best_accuracy = max(accuracy, best_accuracy)
         if best_accuracy > best_prec_history:
             best_prec_history = best_accuracy
-            save_checkpoint(model.state_dict(), filename='Model_trained_by_{}.ckpt'.format(train_method))
+            save_checkpoint(model.state_dict(), filename='Model_{}.ckpt'.format(TRAIN_METHOD))
 
 def train_standard(train_loader, model, optimizer, max_lr, epoch, num_epochs, device):
     train_loss = 0
