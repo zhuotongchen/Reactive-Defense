@@ -61,7 +61,7 @@ def training(train_loader, test_loader, model, args, device=None):
         elif TRAIN_METHOD == 'pgd':
             train_pgd(train_loader, model, optimizer, LEARNING_RATE, epoch, EPOCHS, args, device)
         elif TRAIN_METHOD == 'GAIRAT':
-            train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, begin_epoch, device)
+            train_GAIRAT(train_loader, model, optimizer, LEARNING_RATE, epoch, EPOCHS, args, device)
         
         accuracy = testing(test_loader, model, step_size=0., eps=0., device=device)
         print ('Acc: {:.3f}'.format(accuracy))
@@ -232,6 +232,7 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
     STEP_SIZE = args.step_size
     NUM_STEPS = args.num_steps    
     WEIGHT_ASSIGNMENT_FUNCTION = args.weight_assignment_function
+    BEGIN_EPOCH = args.begin_epoch
     
     # Get lambda
     LAMBDA = args.Lambda
@@ -247,7 +248,7 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
         x_adv, Kappa = pgd(model, data, target, EPSILON, NUM_STEPS,
                            STEP_SIZE, rand_init=True, kappa=True, device=None)
         logit = model(x_adv)
-        _, predicted_label = outputs.max(1)
+        _, predicted_label = logit.max(1)
         if (epoch + 1) >= BEGIN_EPOCH:
             Kappa = Kappa.to(device)
             loss = nn.CrossEntropyLoss(reduction=False)(logit, target)
@@ -262,9 +263,8 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
         optimizer.step()        
     
         train_loss += loss.item()
-        _, predicted = outputs_worse.max(1)
-        train_total += labels.size(0)
-        train_correct += predicted.eq(labels).sum().item()
+        train_total += target.size(0)
+        train_correct += predicted_label.eq(target).sum().item()
         if (i+1) % 100 == 0:
                         print ('Epoch [{}/{}], Step [{}/{}], LR: {:.4f}, Loss: {:.4f}, Acc: {:.3f}' 
                                .format(epoch+1, num_epochs, i+1, total_step,
