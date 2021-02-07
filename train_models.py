@@ -246,7 +246,7 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
         optimizer.param_groups[0].update(lr=lr)
         
         x_adv, Kappa = pgd(model, data, target, EPSILON, NUM_STEPS,
-                           STEP_SIZE, rand_init=True, kappa=True, device=None)
+                           STEP_SIZE, rand_init=False, kappa=True, device=device)
         logit = model(x_adv)
         _, predicted_label = logit.max(1)
         if (epoch + 1) >= BEGIN_EPOCH:
