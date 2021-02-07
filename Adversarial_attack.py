@@ -3,7 +3,6 @@ import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Project gradient descent attack
 # It returns the number of steps to alter the data prediction
@@ -36,7 +35,7 @@ def pgd(model, data, target, epsilon, num_steps, step_size, rand_init=True, kapp
     return x_adv.detach(), Kappa
         
 # The fast gradient sign method
-def fgsm(data, labels, epsilon, model):
+def fgsm(data, labels, epsilon, model, device=None):
     x_ = data.clone().detach().requires_grad_(True).to(data.device)
     outputs = model(x_)
     loss = nn.CrossEntropyLoss()(outputs, labels)
@@ -49,7 +48,7 @@ def fgsm(data, labels, epsilon, model):
     return x_adv.detach()
 
 # Uniform random perturbation
-def Random(data, labels, epsilon, model, device=None):
+def Random(data, epsilon, model, device=None):
     with torch.no_grad():
         noise = torch.from_numpy(np.random.uniform(-epsilon, epsilon, data.shape)).float().to(device)
         x_adv = data + noise

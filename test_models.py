@@ -17,9 +17,9 @@ def testing(test_loader, model, step_size, eps, attack='None', device=None):
         if attack == 'None':
             x = inputs
         elif attack == 'fgsm':
-            x = fgsm(inputs, labels, eps, model)
+            x = fgsm(inputs, labels, eps, model, device)
         elif attack == 'Random':
-            x = Random(inputs, labels, eps, model)
+            x = Random(inputs, labels, eps, model, device)
         elif attack == 'pgd':
             x, _ = pgd(model, inputs, labels, epsilon=eps,
                           num_steps=20, step_size=step_size, rand_init=False, device=device)
