@@ -251,7 +251,7 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
         _, predicted_label = logit.max(1)
         if (epoch + 1) >= BEGIN_EPOCH:
             Kappa = Kappa.to(device)
-            loss = nn.CrossEntropyLoss(reduction=False)(logit, target)
+            loss = nn.CrossEntropyLoss(reduce=False)(logit, target)
             # Calculate weight assignment according to geometry value
             normalized_reweight = GAIR(NUM_STEPS, Kappa, Lambda, WEIGHT_ASSIGNMENT_FUNCTION)
             loss = loss.mul(normalized_reweight).mean()            
