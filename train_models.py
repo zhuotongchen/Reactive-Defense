@@ -241,13 +241,18 @@ def train_GAIRAT(train_loader, model, optimizer, max_lr, epoch, num_epochs, args
     Lambda = adjust_Lambda(num_epochs, epoch + 1, LAMBDA, LAMBDA_MAX, LAMBDA_SCHEDULE)
     for i, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
+        data = random_flip_left_right(data)
         
         lr = lr_schedule(num_epochs, epoch + 1, max_lr)
         optimizer.param_groups[0].update(lr=lr)
         
         x_adv, Kappa = pgd(model, data, target, EPSILON, NUM_STEPS,
                            STEP_SIZE, rand_init=False, kappa=True, device=device)
-        logit = model(x_adv)
+        
+        num_half_images = int(data.shape[0] / 2)
+        x_combined = torch.cat((data[0:num_half_images], x_adv[num_half_images:]), dim=0)
+        
+        logit = model(x_combined)
         _, predicted_label = logit.max(1)
         if (epoch + 1) >= BEGIN_EPOCH:
             Kappa = Kappa.to(device)
