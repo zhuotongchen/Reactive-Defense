@@ -124,8 +124,10 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
     optimizer.param_groups[0].update(lr=lr)
     # Set adversarial training parameters
     EPSILON = args.epsilon
-    STEP_SIZE = 1. / 255.
-    # NUM_STEPS = args.num_steps
+    STEP_SIZE = args.step_size
+    NUM_STEPS = args.num_steps    
+    WEIGHT_ASSIGNMENT_FUNCTION = args.weight_assignment_function
+    BEGIN_EPOCH = args.begin_epoch
     
     for i, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
