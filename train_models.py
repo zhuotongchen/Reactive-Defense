@@ -128,27 +128,22 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
     # NUM_STEPS = args.num_steps
     
     for i, (images, labels) in enumerate(train_loader):
-        eps_defense = truncated_normal(images.shape[0], EPSILON).abs()
-        eps_defense = eps_defense[:, None, None, None]
-        eps_defense = eps_defense.to(device)
-        num_half_images = int(images.shape[0] / 2)
-        images, labels = images.to(device), labels.to(device)
-        images_flipped = random_flip_left_right(images)
-        outputs = model(images_flipped)
-        _, predicted_label = outputs.max(1)
-        random_number = truncated_normal(1, 8.).abs()
-        NUM_STEPS = int(min(random_number + 4, 1.25 * random_number))
+        data, target = data.to(device), target.to(device)
+        data = random_flip_left_right(data)
         
-        images_adv, _ = pgd(model, images_flipped, predicted_label, eps_defense, NUM_STEPS,
-                           STEP_SIZE, rand_init=False, device=device)
-        # images_combined = torch.cat((images_flipped[0:num_half_images], images_adv[num_half_images:]), dim=0)
+        lr = lr_schedule(num_epochs, epoch + 1, max_lr)
+        optimizer.param_groups[0].update(lr=lr)
         
-        # outputs_worse = model(images_combined)
-        # loss_1 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[0:num_half_images], labels[0:num_half_images]) * 2.0 / 1.3
-        # loss_2 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[num_half_images:], labels[num_half_images:]) * 0.6 / 1.3
-        # loss = (loss_1 + loss_2) / 2.
-        outputs_worse = model(images_adv)
-        loss = nn.CrossEntropyLoss(reduction="mean")(outputs_worse, labels)
+        x_adv, Kappa = pgd(model, data, target, EPSILON, NUM_STEPS,
+                           STEP_SIZE, rand_init=False, kappa=False, device=device)
+        
+        num_half_images = int(data.shape[0] / 2)
+        x_combined = torch.cat((data[0:num_half_images], x_adv[num_half_images:]), dim=0)
+
+        logit = model(x_combined)
+        _, predicted_label = logit.max(1)
+        
+        loss = nn.CrossEntropyLoss(reduction="mean")(logit, target)
         
         optimizer.zero_grad()
         loss.backward()
@@ -162,6 +157,58 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
                         print ('Epoch [{}/{}], Step [{}/{}], LR: {:.4f}, Loss: {:.4f}, Acc: {:.3f}' 
                                .format(epoch+1, num_epochs, i+1, total_step,
                                        optimizer.param_groups[0]['lr'], train_loss/total_step, 100.*train_correct/train_total))
+                        
+                        
+# def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, device):
+#     train_loss = 0
+#     train_correct = 0
+#     train_total = 0
+#     total_step = len(train_loader)
+#     model.train()
+    
+#     # Set learning rate
+#     lr = lr_schedule(num_epochs, epoch + 1, max_lr)
+#     optimizer.param_groups[0].update(lr=lr)
+#     # Set adversarial training parameters
+#     EPSILON = args.epsilon
+#     STEP_SIZE = 1. / 255.
+#     # NUM_STEPS = args.num_steps
+    
+#     for i, (images, labels) in enumerate(train_loader):
+#         eps_defense = truncated_normal(images.shape[0], EPSILON).abs()
+#         eps_defense = eps_defense[:, None, None, None]
+#         eps_defense = eps_defense.to(device)
+#         num_half_images = int(images.shape[0] / 2)
+#         images, labels = images.to(device), labels.to(device)
+#         images_flipped = random_flip_left_right(images)
+#         outputs = model(images_flipped)
+#         _, predicted_label = outputs.max(1)
+#         random_number = truncated_normal(1, 8.).abs()
+#         NUM_STEPS = int(min(random_number + 4, 1.25 * random_number))
+        
+#         images_adv, _ = pgd(model, images_flipped, predicted_label, eps_defense, NUM_STEPS,
+#                            STEP_SIZE, rand_init=False, device=device)
+#         # images_combined = torch.cat((images_flipped[0:num_half_images], images_adv[num_half_images:]), dim=0)
+        
+#         # outputs_worse = model(images_combined)
+#         # loss_1 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[0:num_half_images], labels[0:num_half_images]) * 2.0 / 1.3
+#         # loss_2 = nn.CrossEntropyLoss(reduction="mean")(outputs_worse[num_half_images:], labels[num_half_images:]) * 0.6 / 1.3
+#         # loss = (loss_1 + loss_2) / 2.
+#         outputs_worse = model(images_adv)
+#         loss = nn.CrossEntropyLoss(reduction="mean")(outputs_worse, labels)
+        
+#         optimizer.zero_grad()
+#         loss.backward()
+#         optimizer.step()
+        
+#         train_loss += loss.item()
+#         _, predicted = outputs_worse.max(1)
+#         train_total += labels.size(0)
+#         train_correct += predicted.eq(labels).sum().item()
+#         if (i+1) % 100 == 0:
+#                         print ('Epoch [{}/{}], Step [{}/{}], LR: {:.4f}, Loss: {:.4f}, Acc: {:.3f}' 
+#                                .format(epoch+1, num_epochs, i+1, total_step,
+#                                        optimizer.param_groups[0]['lr'], train_loss/total_step, 100.*train_correct/train_total))
 
 # Adversarial training with GAIRAT
 # 'zhang2020geometry'
