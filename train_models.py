@@ -127,7 +127,7 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
     STEP_SIZE = 1. / 255.
     # NUM_STEPS = args.num_steps
     
-    for i, (images, labels) in enumerate(train_loader):
+    for i, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         data = random_flip_left_right(data)
         
