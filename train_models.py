@@ -152,14 +152,13 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
         optimizer.step()
         
         train_loss += loss.item()
-        _, predicted = outputs_worse.max(1)
-        train_total += labels.size(0)
-        train_correct += predicted.eq(labels).sum().item()
+        train_total += target.size(0)
+        train_correct += predicted_label.eq(target).sum().item()
         if (i+1) % 100 == 0:
                         print ('Epoch [{}/{}], Step [{}/{}], LR: {:.4f}, Loss: {:.4f}, Acc: {:.3f}' 
                                .format(epoch+1, num_epochs, i+1, total_step,
-                                       optimizer.param_groups[0]['lr'], train_loss/total_step, 100.*train_correct/train_total))
-                        
+                                       optimizer.param_groups[0]['lr'], train_loss/total_step, 100.*train_correct/train_total))    
+
                         
 # def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, device):
 #     train_loss = 0
