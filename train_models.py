@@ -158,7 +158,6 @@ def train_pgd(train_loader, model, optimizer, max_lr, epoch, num_epochs, args, d
                         print ('Epoch [{}/{}], Step [{}/{}], LR: {:.4f}, Loss: {:.4f}, Acc: {:.3f}' 
                                .format(epoch+1, num_epochs, i+1, total_step,
                                        optimizer.param_groups[0]['lr'], train_loss/total_step, 100.*train_correct/train_total))    
-                               optimizer.param_groups[0]['lr'], train_loss/total_step, 100.*train_correct/train_total))
 
 # Adversarial training with GAIRAT
 # 'zhang2020geometry'
